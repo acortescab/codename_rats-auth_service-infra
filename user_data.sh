@@ -2,22 +2,17 @@
 set -euxo pipefail
 
 # Keep package metadata fresh before adding Docker's apt repository.
-apt-get update
-apt-get install -y ca-certificates curl gnupg lsb-release
-apt-get install -y awscli
+sudo apt-get update
+sudo apt-get install ca-certificates curl gnupg lsb-release -y
+sudo apt install -y unzip curl
+sudo apt-get install docker.io -y
+sudo apt-get install docker-compose-plugin -y
 
-install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-chmod a+r /etc/apt/keyrings/docker.asc
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip -q awscliv2.zip
+sudo ./aws/install
 
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
-  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo systemctl enable docker
+sudo systemctl start docker
 
-apt-get update
-apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-
-systemctl enable docker
-systemctl start docker
-
-usermod -aG docker ubuntu
+sudo usermod -aG docker ubuntu
