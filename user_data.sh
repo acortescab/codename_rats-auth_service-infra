@@ -2,17 +2,23 @@
 set -euxo pipefail
 
 # Keep package metadata fresh before adding Docker's apt repository.
-sudo apt-get update
-sudo apt-get install ca-certificates curl gnupg lsb-release -y
-sudo apt install -y unzip curl
-sudo apt-get install docker.io -y
-sudo apt-get install docker-compose-plugin -y
+apt-get update
+apt-get install ca-certificates curl gnupg lsb-release -y
+apt install -y unzip curl
+apt-get install docker.io -y
+apt-get install docker-compose-plugin -y
 
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-unzip -q awscliv2.zip
-sudo ./aws/install
+curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" \
+  -o /tmp/awscliv2.zip
 
-sudo systemctl enable docker
-sudo systemctl start docker
+unzip -q /tmp/awscliv2.zip -d /tmp
 
-sudo usermod -aG docker ubuntu
+/tmp/aws/install
+
+# Verify installation
+/usr/local/bin/aws --version
+
+systemctl enable docker
+systemctl start docker
+
+usermod -aG docker ubuntu
