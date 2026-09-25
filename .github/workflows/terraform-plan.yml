@@ -90,16 +90,18 @@ jobs:
             const summary = `${{ steps.summary.outputs.summary }}`;
             const exitCode = `${{ steps.plan.outputs.exitcode }}`;
             const status = exitCode === '0' || exitCode === '2' ? 'Success' : 'Failed';
-            const fullPlan = require('fs').readFileSync('plan-output.txt', 'utf8');
-            const output = `### Terraform Plan Summary
-            **Status**: ${status}
-            **Plan Exit Code**: \`${exitCode}\`
-            **Plan Outcome**: ${summary}
-
-            \n\n```hcl
-            ${fullPlan}
-            ```
-            `;
+            const fs = require('fs');
+            const fullPlan = fs.readFileSync('plan-output.txt', 'utf8');
+            const output = [
+              '### Terraform Plan Summary',
+              `**Status**: ${status}`,
+              `**Plan Exit Code**: \`${exitCode}\``,
+              `**Plan Outcome**: ${summary}`,
+              '',
+              '```hcl',
+              fullPlan,
+              '```'
+            ].join('\n');
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,
