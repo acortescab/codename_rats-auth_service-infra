@@ -72,7 +72,8 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           if [ -f tfplan ]; then
-            summary=$(terraform show -no-color tfplan | grep -E "^Plan:|^No changes\." || true)
+            terraform show -no-color tfplan > plan-output.txt
+            summary=$(grep -E "^Plan:|^No changes\." plan-output.txt || true)
             if [ -z "$summary" ]; then
               summary="Plan completed successfully. Check logs for details."
             fi
@@ -89,15 +90,16 @@ jobs:
             const summary = `${{ steps.summary.outputs.summary }}`;
             const exitCode = `${{ steps.plan.outputs.exitcode }}`;
             const status = exitCode === '0' || exitCode === '2' ? 'Success' : 'Failed';
+            const fullPlan = require('fs').readFileSync('plan-output.txt', 'utf8');
             const output = `### Terraform Plan Summary
             **Status**: ${status}
             **Plan Exit Code**: \`${exitCode}\`
             **Plan Outcome**: ${summary}
 
-            <details><summary>Click to view details</summary>
-
-            Review the Terraform execution logs above to inspect the proposed changes. Merge this pull request only after the plan is accepted.
-            </details>`;
+            \n\n```hcl
+            ${fullPlan}
+            ```
+            `;
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,
