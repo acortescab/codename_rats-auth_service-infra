@@ -103,5 +103,5 @@ variable "enable_iam_instance_profile" {
 variable "extra_tags" {
   description = "Additional tags to merge into all resources"
   type        = map(string)
-  default     = { }
+  default     = {}
 }
