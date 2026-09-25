@@ -12,7 +12,7 @@ permissions:
   id-token: write
 
 env:
-  TF_VERSION: "1.6.0"
+  TF_VERSION: "1.10.5"
   AWS_DEFAULT_REGION: "eu-west-1"
 
 jobs:
@@ -33,11 +33,18 @@ jobs:
           terraform_version: ${{ env.TF_VERSION }}
           terraform_wrapper: false
 
+      - name: Debug OIDC
+        run: |
+          TOKEN=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | jq -r .value)
+          echo "$TOKEN" | cut -d. -f2 | base64 -d 2>/dev/null | jq .
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_DEFAULT_REGION }}
+          audience: sts.amazonaws.com
 
       - name: Terraform fmt
         run: terraform fmt -check -diff -recursive
@@ -65,7 +72,8 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           if [ -f tfplan ]; then
-            summary=$(terraform show -no-color tfplan | grep -E "^Plan:|^No changes\." || true)
+            terraform show -no-color tfplan > plan-output.txt
+            summary=$(grep -E "^Plan:|^No changes\." plan-output.txt || true)
             if [ -z "$summary" ]; then
               summary="Plan completed successfully. Check logs for details."
             fi
@@ -82,20 +90,23 @@ jobs:
             const summary = `${{ steps.summary.outputs.summary }}`;
             const exitCode = `${{ steps.plan.outputs.exitcode }}`;
             const status = exitCode === '0' || exitCode === '2' ? 'Success' : 'Failed';
-            const output = `### Terraform Plan Summary
-            **Status**: ${status}
-            **Plan Exit Code**: \`${exitCode}\`
-            **Plan Outcome**: ${summary}
-
-            <details><summary>Click to view details</summary>
-
-            Review the Terraform execution logs above to inspect the proposed changes. Merge this pull request only after the plan is accepted.
-            </details>`;
+            const fs = require('fs');
+            const fullPlan = fs.readFileSync('plan-output.txt', 'utf8');
+            const output = [
+              '### Terraform Plan Summary',
+              `**Status**: ${status}`,
+              `**Plan Exit Code**: \`${exitCode}\``,
+              `**Plan Outcome**: ${summary}`,
+              '',
+              '```hcl',
+              fullPlan,
+              '```'
+            ].join('\n');
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
-              repo: context.repo.name,
+              repo: context.repo.repo,
               body: output
             });
 
